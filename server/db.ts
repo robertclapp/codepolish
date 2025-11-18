@@ -1,6 +1,10 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { 
+  InsertUser, users,
+  polishes, InsertPolish,
+  subscriptions, InsertSubscription
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +93,86 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+/**
+ * Polish queries
+ */
+export async function createPolish(data: InsertPolish) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(polishes).values(data);
+  return result;
+}
+
+export async function getUserPolishes(userId: number, limit: number = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(polishes)
+    .where(eq(polishes.userId, userId))
+    .limit(limit);
+}
+
+export async function getPolishById(polishId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(polishes).where(eq(polishes.id, polishId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function updatePolish(polishId: number, data: Partial<InsertPolish>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.update(polishes).set(data).where(eq(polishes.id, polishId));
+}
+
+export async function deletePolish(polishId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.delete(polishes).where(eq(polishes.id, polishId));
+}
+
+/**
+ * Subscription queries
+ */
+export async function createSubscription(data: InsertSubscription) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.insert(subscriptions).values(data);
+}
+
+export async function getUserSubscription(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(subscriptions).where(eq(subscriptions.userId, userId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function updateSubscription(userId: number, data: Partial<InsertSubscription>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.update(subscriptions).set(data).where(eq(subscriptions.userId, userId));
+}
+
+export async function deductCredits(userId: number, amount: number = 1) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const subscription = await getUserSubscription(userId);
+  if (!subscription) throw new Error("No subscription found");
+  if (subscription.creditsRemaining < amount) throw new Error("Insufficient credits");
+  
+  return await db.update(subscriptions)
+    .set({ creditsRemaining: subscription.creditsRemaining - amount })
+    .where(eq(subscriptions.userId, userId));
+}
+
+export async function refundCredits(userId: number, amount: number = 1) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const subscription = await getUserSubscription(userId);
+  if (!subscription) throw new Error("No subscription found");
+  
+  return await db.update(subscriptions)
+    .set({ creditsRemaining: subscription.creditsRemaining + amount })
+    .where(eq(subscriptions.userId, userId));
+}
