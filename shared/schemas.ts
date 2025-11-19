@@ -42,6 +42,18 @@ export const CreatePolishInputSchema = z.object({
     .string()
     .min(1, "Code is required")
     .max(500000, "Code must be less than 500KB"),
+  preset: z.enum(["quick", "standard", "thorough", "security", "performance"]).optional(),
+  rules: z.object({
+    accessibility: z.boolean(),
+    security: z.boolean(),
+    performance: z.boolean(),
+    documentation: z.boolean(),
+    testing: z.boolean(),
+    componentSplitting: z.boolean(),
+    typeAnnotations: z.boolean(),
+    errorHandling: z.boolean(),
+    codeStyle: z.boolean(),
+  }).optional(),
 });
 export type CreatePolishInput = z.infer<typeof CreatePolishInputSchema>;
 
@@ -173,3 +185,153 @@ export type PaginatedResponse<T> = {
   offset: number;
   hasMore: boolean;
 };
+
+// Polish rules configuration
+export const PolishRulesSchema = z.object({
+  accessibility: z.boolean().default(true),
+  security: z.boolean().default(true),
+  performance: z.boolean().default(true),
+  documentation: z.boolean().default(true),
+  testing: z.boolean().default(false),
+  componentSplitting: z.boolean().default(false),
+  typeAnnotations: z.boolean().default(true),
+  errorHandling: z.boolean().default(true),
+  codeStyle: z.boolean().default(true),
+});
+export type PolishRules = z.infer<typeof PolishRulesSchema>;
+
+// Polish preset configurations
+export const PolishPresetSchema = z.enum([
+  "quick",
+  "standard",
+  "thorough",
+  "security",
+  "performance"
+]);
+export type PolishPreset = z.infer<typeof PolishPresetSchema>;
+
+export const POLISH_PRESETS: Record<PolishPreset, PolishRules> = {
+  quick: {
+    accessibility: false,
+    security: false,
+    performance: false,
+    documentation: false,
+    testing: false,
+    componentSplitting: false,
+    typeAnnotations: true,
+    errorHandling: true,
+    codeStyle: true,
+  },
+  standard: {
+    accessibility: true,
+    security: true,
+    performance: true,
+    documentation: true,
+    testing: false,
+    componentSplitting: false,
+    typeAnnotations: true,
+    errorHandling: true,
+    codeStyle: true,
+  },
+  thorough: {
+    accessibility: true,
+    security: true,
+    performance: true,
+    documentation: true,
+    testing: true,
+    componentSplitting: true,
+    typeAnnotations: true,
+    errorHandling: true,
+    codeStyle: true,
+  },
+  security: {
+    accessibility: false,
+    security: true,
+    performance: false,
+    documentation: false,
+    testing: false,
+    componentSplitting: false,
+    typeAnnotations: true,
+    errorHandling: true,
+    codeStyle: false,
+  },
+  performance: {
+    accessibility: false,
+    security: false,
+    performance: true,
+    documentation: false,
+    testing: false,
+    componentSplitting: true,
+    typeAnnotations: true,
+    errorHandling: false,
+    codeStyle: false,
+  },
+};
+
+// Learning suggestion schema
+export const LearningSuggestionSchema = z.object({
+  id: z.string(),
+  category: z.enum(["pattern", "bestPractice", "antiPattern", "tip"]),
+  title: z.string(),
+  description: z.string(),
+  codeExample: z.string().optional(),
+  learnMoreUrl: z.string().optional(),
+  severity: z.enum(["info", "warning", "error"]),
+});
+export type LearningSuggestion = z.infer<typeof LearningSuggestionSchema>;
+
+// Quality trend data point
+export const QualityDataPointSchema = z.object({
+  date: z.date(),
+  averageScore: z.number(),
+  totalPolishes: z.number(),
+  issuesFixed: z.number(),
+});
+export type QualityDataPoint = z.infer<typeof QualityDataPointSchema>;
+
+// Team workspace schema
+export const TeamWorkspaceSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  slug: z.string(),
+  ownerId: z.number(),
+  createdAt: z.date(),
+  memberCount: z.number(),
+  totalPolishes: z.number(),
+});
+export type TeamWorkspace = z.infer<typeof TeamWorkspaceSchema>;
+
+// API key schema
+export const ApiKeySchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  keyPrefix: z.string(),
+  lastUsed: z.date().nullable(),
+  createdAt: z.date(),
+  expiresAt: z.date().nullable(),
+});
+export type ApiKey = z.infer<typeof ApiKeySchema>;
+
+// Generated test schema
+export const GeneratedTestSchema = z.object({
+  filename: z.string(),
+  content: z.string(),
+  framework: z.enum(["jest", "vitest", "mocha"]),
+  coverage: z.object({
+    statements: z.number(),
+    branches: z.number(),
+    functions: z.number(),
+    lines: z.number(),
+  }),
+});
+export type GeneratedTest = z.infer<typeof GeneratedTestSchema>;
+
+// GitHub export schema
+export const GitHubExportInputSchema = z.object({
+  polishId: z.number(),
+  repositoryUrl: z.string().url(),
+  branch: z.string().default("main"),
+  commitMessage: z.string().optional(),
+  createPR: z.boolean().default(false),
+});
+export type GitHubExportInput = z.infer<typeof GitHubExportInputSchema>;

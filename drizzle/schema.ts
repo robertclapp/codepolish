@@ -70,3 +70,87 @@ export const subscriptions = mysqlTable("subscriptions", {
 
 export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSubscription = typeof subscriptions.$inferInsert;
+
+/**
+ * Teams table - workspaces for collaboration
+ */
+export const teams = mysqlTable("teams", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  slug: varchar("slug", { length: 100 }).notNull().unique(),
+  ownerId: int("ownerId").notNull(),
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Team = typeof teams.$inferSelect;
+export type InsertTeam = typeof teams.$inferInsert;
+
+/**
+ * Team members table - users in a team
+ */
+export const teamMembers = mysqlTable("team_members", {
+  id: int("id").autoincrement().primaryKey(),
+  teamId: int("teamId").notNull(),
+  userId: int("userId").notNull(),
+  role: mysqlEnum("role", ["owner", "admin", "member"]).default("member").notNull(),
+  joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+});
+
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type InsertTeamMember = typeof teamMembers.$inferInsert;
+
+/**
+ * API keys table - for programmatic access
+ */
+export const apiKeys = mysqlTable("api_keys", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  keyHash: varchar("keyHash", { length: 64 }).notNull().unique(),
+  keyPrefix: varchar("keyPrefix", { length: 12 }).notNull(),
+  lastUsed: timestamp("lastUsed"),
+  expiresAt: timestamp("expiresAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ApiKeyRecord = typeof apiKeys.$inferSelect;
+export type InsertApiKey = typeof apiKeys.$inferInsert;
+
+/**
+ * User preferences table - settings and preferences
+ */
+export const userPreferences = mysqlTable("user_preferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  defaultFramework: varchar("defaultFramework", { length: 32 }).default("react").notNull(),
+  defaultPreset: varchar("defaultPreset", { length: 32 }).default("standard").notNull(),
+  customRules: text("customRules"), // JSON
+  theme: varchar("theme", { length: 16 }).default("system").notNull(),
+  emailNotifications: int("emailNotifications").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserPreference = typeof userPreferences.$inferSelect;
+export type InsertUserPreference = typeof userPreferences.$inferInsert;
+
+/**
+ * Generated tests table - stores test files generated for polishes
+ */
+export const generatedTests = mysqlTable("generated_tests", {
+  id: int("id").autoincrement().primaryKey(),
+  polishId: int("polishId").notNull(),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  framework: varchar("framework", { length: 32 }).default("vitest").notNull(),
+  coverageStatements: int("coverageStatements"),
+  coverageBranches: int("coverageBranches"),
+  coverageFunctions: int("coverageFunctions"),
+  coverageLines: int("coverageLines"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type GeneratedTestRecord = typeof generatedTests.$inferSelect;
+export type InsertGeneratedTest = typeof generatedTests.$inferInsert;
