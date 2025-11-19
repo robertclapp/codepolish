@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { APP_TITLE, getLoginUrl, PRICING_TIERS } from "@/const";
 import { ArrowRight, Check, Code2, Sparkles, Zap, Shield, FileCode, GitBranch } from "lucide-react";
 import { useLocation } from "wouter";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
@@ -34,6 +35,7 @@ export default function Home() {
             <a href="#pricing" className="text-sm font-medium hover:text-primary transition-colors">
               Pricing
             </a>
+            <ThemeToggle />
             {isAuthenticated ? (
               <Button onClick={() => setLocation("/dashboard")}>Dashboard</Button>
             ) : (

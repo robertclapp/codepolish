@@ -1,11 +1,12 @@
-import { eq } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { 
+import {
   InsertUser, users,
   polishes, InsertPolish,
   subscriptions, InsertSubscription
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import type { PolishStatus } from "@shared/schemas";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -103,12 +104,47 @@ export async function createPolish(data: InsertPolish) {
   return result;
 }
 
-export async function getUserPolishes(userId: number, limit: number = 50) {
+export async function getUserPolishes(
+  userId: number,
+  limit: number = 50,
+  offset: number = 0,
+  status?: PolishStatus
+) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(polishes)
-    .where(eq(polishes.userId, userId))
-    .limit(limit);
+
+  const conditions = [eq(polishes.userId, userId)];
+  if (status) {
+    conditions.push(eq(polishes.status, status));
+  }
+
+  return await db
+    .select()
+    .from(polishes)
+    .where(and(...conditions))
+    .orderBy(desc(polishes.createdAt))
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function countUserPolishes(
+  userId: number,
+  status?: PolishStatus
+): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const conditions = [eq(polishes.userId, userId)];
+  if (status) {
+    conditions.push(eq(polishes.status, status));
+  }
+
+  const result = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(polishes)
+    .where(and(...conditions));
+
+  return result[0]?.count ?? 0;
 }
 
 export async function getPolishById(polishId: number) {
