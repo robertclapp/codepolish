@@ -35,6 +35,9 @@ import {
   AlertCircle,
   GitCompare,
   Code,
+  Share2,
+  Layers,
+  Library,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -43,6 +46,13 @@ import type { Framework, PolishResponse } from "@shared/schemas";
 import { FileUpload } from "@/components/FileUpload";
 import { CodeDiffViewer } from "@/components/CodeDiffViewer";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useKeyboardShortcuts, KeyboardShortcutsList } from "@/hooks/useKeyboardShortcuts";
+import { RecentPolishesWidget } from "@/components/RecentPolishesWidget";
+import { SharePolishDialog } from "@/components/SharePolishDialog";
+import { CodeTemplates } from "@/components/CodeTemplates";
+import { BatchProcessor } from "@/components/BatchProcessor";
+import { SnippetLibrary } from "@/components/SnippetLibrary";
+import { SmartComponentDetector } from "@/components/SmartComponentDetector";
 
 export default function Dashboard() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -181,6 +191,48 @@ export default function Dashboard() {
     setFramework(polish.framework);
   };
 
+  // Keyboard shortcuts
+  useKeyboardShortcuts([
+    {
+      key: "s",
+      ctrl: true,
+      description: "Polish code",
+      handler: () => {
+        if (!isPolishing && code.trim() && polishName.trim() && credits >= 1) {
+          handlePolish();
+        }
+      },
+    },
+    {
+      key: "v",
+      ctrl: true,
+      shift: true,
+      description: "Paste from clipboard",
+      handler: handlePasteFromClipboard,
+    },
+    {
+      key: "d",
+      ctrl: true,
+      description: "Download polished code",
+      handler: () => {
+        if (activePolish?.polishedCode) {
+          handleDownload();
+        }
+      },
+    },
+    {
+      key: "c",
+      ctrl: true,
+      shift: true,
+      description: "Copy polished code",
+      handler: () => {
+        if (activePolish?.polishedCode) {
+          handleCopyCode();
+        }
+      },
+    },
+  ]);
+
   const credits = subscriptionQuery.data?.creditsRemaining ?? 0;
   const plan = subscriptionQuery.data?.plan ?? "free";
   const isPolishing =
@@ -217,6 +269,25 @@ export default function Dashboard() {
             <h1 className="text-xl font-bold">Dashboard</h1>
           </div>
           <div className="flex items-center gap-4">
+            <BatchProcessor
+              framework={framework}
+              onProcess={async (files) => {
+                // Mock batch processing - in production, call API endpoint
+                return files.map(f => ({
+                  ...f,
+                  status: "completed" as const,
+                  polishedCode: `// Polished: ${f.name}\n${f.content}`,
+                }));
+              }}
+            />
+            <SnippetLibrary
+              framework={framework}
+              onUseSnippet={(snippet) => {
+                setCode(snippet.code);
+                setFramework(snippet.framework);
+                toast.success(`Inserted snippet: ${snippet.name}`);
+              }}
+            />
             <Badge variant="outline">
               Credits: {credits} remaining
             </Badge>
@@ -238,6 +309,18 @@ export default function Dashboard() {
 
           {/* Polish Tab */}
           <TabsContent value="polish" className="space-y-6">
+            {/* Recent Polishes Widget */}
+            <RecentPolishesWidget
+              polishes={polishesQuery.data?.items.slice(0, 5) || []}
+              onSelect={loadPolish}
+              onViewAll={() => {
+                // Switch to history tab
+                const historyTab = document.querySelector('[value="history"]') as HTMLButtonElement;
+                historyTab?.click();
+              }}
+              loading={polishesQuery.isLoading}
+            />
+
             <div className="grid lg:grid-cols-2 gap-6">
               {/* Input Section */}
               <Card>
@@ -300,15 +383,27 @@ export default function Dashboard() {
                     disabled={isPolishing}
                   />
 
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={handlePasteFromClipboard}
-                    disabled={isPolishing}
-                  >
-                    <Copy className="mr-2 h-4 w-4" />
-                    Paste from Clipboard
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={handlePasteFromClipboard}
+                      disabled={isPolishing}
+                    >
+                      <Copy className="mr-2 h-4 w-4" />
+                      Paste from Clipboard
+                    </Button>
+                    <CodeTemplates
+                      framework={framework}
+                      onSelectTemplate={(template) => {
+                        setCode(template.code);
+                        if (!polishName) {
+                          setPolishName(template.name);
+                        }
+                        toast.success(`Template loaded: ${template.name}`);
+                      }}
+                    />
+                  </div>
                 </CardContent>
                 <CardFooter>
                   <Button
@@ -489,6 +584,20 @@ export default function Dashboard() {
                         </div>
                       )}
 
+                      {/* Smart Component Detector */}
+                      {activePolish?.polishedCode && (
+                        <SmartComponentDetector
+                          code={activePolish.polishedCode}
+                          framework={activePolish.framework}
+                          onExtractComponent={(suggestion) => {
+                            // In production, would create a new polish with extracted component
+                            setCode(suggestion.extractedCode);
+                            setPolishName(`${activePolish.name} - ${suggestion.name}`);
+                            toast.success(`Component "${suggestion.name}" ready to polish`);
+                          }}
+                        />
+                      )}
+
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <Label>Output</Label>
@@ -537,10 +646,6 @@ export default function Dashboard() {
                     <Download className="mr-2 h-4 w-4" />
                     Download
                   </Button>
-                  <Button variant="outline" className="flex-1" disabled>
-                    <Github className="mr-2 h-4 w-4" />
-                    Push to GitHub
-                  </Button>
                   <Button
                     variant="outline"
                     className="flex-1"
@@ -549,6 +654,19 @@ export default function Dashboard() {
                   >
                     <Copy className="mr-2 h-4 w-4" />
                     Copy Code
+                  </Button>
+                  {activePolish?.polishedCode && (
+                    <SharePolishDialog
+                      polish={activePolish}
+                      onGenerateLink={async () => {
+                        // In production, call API to generate shareable link
+                        return `${window.location.origin}/share/${activePolish.id}`;
+                      }}
+                    />
+                  )}
+                  <Button variant="outline" className="flex-1" disabled>
+                    <Github className="mr-2 h-4 w-4" />
+                    Push to GitHub
                   </Button>
                 </CardFooter>
               </Card>
@@ -667,6 +785,18 @@ export default function Dashboard() {
                       <span>{user?.email || "Not set"}</span>
                     </div>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Keyboard Shortcuts</Label>
+                  <KeyboardShortcutsList
+                    shortcuts={[
+                      { key: "s", ctrl: true, description: "Polish code" },
+                      { key: "v", ctrl: true, shift: true, description: "Paste from clipboard" },
+                      { key: "d", ctrl: true, description: "Download polished code" },
+                      { key: "c", ctrl: true, shift: true, description: "Copy polished code" },
+                    ]}
+                  />
                 </div>
               </CardContent>
             </Card>
