@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, index, uniqueIndex } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -45,7 +45,11 @@ export const polishes = mysqlTable("polishes", {
   creditsUsed: int("creditsUsed").default(1).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => [
+  index("polishes_userId_idx").on(table.userId),
+  index("polishes_status_idx").on(table.status),
+  index("polishes_userId_createdAt_idx").on(table.userId, table.createdAt),
+]);
 
 export type Polish = typeof polishes.$inferSelect;
 export type InsertPolish = typeof polishes.$inferInsert;
@@ -66,7 +70,11 @@ export const subscriptions = mysqlTable("subscriptions", {
   periodEnd: timestamp("periodEnd").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => [
+  index("subscriptions_stripeCustomerId_idx").on(table.stripeCustomerId),
+  index("subscriptions_status_idx").on(table.status),
+  index("subscriptions_periodEnd_idx").on(table.periodEnd),
+]);
 
 export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSubscription = typeof subscriptions.$inferInsert;
